@@ -16,9 +16,7 @@ from simulation.connection import ClientConnection
 from simulation.environment import CarlaEnvironment
 from parameters import *
 
-
 def parse_args():
-    
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp-name', type=str, default='ppo', help='name of the experiment')
     parser.add_argument('--env-name', type=str, default='carla', help='name of the simulation environment')
@@ -42,10 +40,7 @@ def boolean_string(s):
         raise ValueError('Not a valid boolean string')
     return s == 'True'
 
-
-
 def runner():
-
     #========================================================================
     #                           BASIC PARAMETER & LOGGING SETUP
     #========================================================================
@@ -63,31 +58,31 @@ def runner():
             run_name = "PPO"
         else:
             """
-            
             Here the functionality can be extended to different algorithms.
-
             """ 
             sys.exit() 
     except Exception as e:
         print(e.message)
         sys.exit()
     
+    # Modified TensorBoard log directory
+    log_dir = f"/home/mehran/CarlaProject/AD_CARLA/logs/PPO/{town}/"
+    os.makedirs(log_dir, exist_ok=True)  # Ensure base directory exists
+    run_dir = os.path.join(log_dir, f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
     if train == True:
-        writer = SummaryWriter(f"runs/{run_name}_{action_std_init}_{int(total_timesteps)}/{town}")
+        writer = SummaryWriter(log_dir=run_dir)
     else:
-        writer = SummaryWriter(f"runs/{run_name}_{action_std_init}_{int(total_timesteps)}_TEST/{town}")
+        writer = SummaryWriter(log_dir=run_dir)
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}" for key, value in vars(args).items()])))
 
-
-    #Seeding to reproduce the results 
+    # Seeding to reproduce the results 
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    
     action_std_decay_rate = 0.05
     min_action_std = 0.05   
     action_std_decay_freq = 5e5
@@ -110,11 +105,10 @@ def runner():
         logging.error("Connection has been refused by the server.")
         ConnectionRefusedError
     if train:
-        env = CarlaEnvironment(client, world,town)
+        env = CarlaEnvironment(client, world, town)
     else:
-        env = CarlaEnvironment(client, world,town, checkpoint_frequency=None)
+        env = CarlaEnvironment(client, world, town, checkpoint_frequency=None)
     encode = EncodeState(LATENT_DIM)
-
 
     #========================================================================
     #                           ALGORITHM
@@ -142,9 +136,8 @@ def runner():
             else:
                 agent = PPOAgent(town, action_std_init)
         if train:
-            #Training
+            # Training
             while timestep < total_timesteps:
-            
                 observation = env.reset()
                 observation = encode.process(observation)
 
@@ -152,7 +145,6 @@ def runner():
                 t1 = datetime.now()
 
                 for t in range(args.episode_length):
-                
                     # select action with policy
                     action = agent.get_action(observation, train=True)
 
@@ -164,13 +156,13 @@ def runner():
                     agent.memory.rewards.append(reward)
                     agent.memory.dones.append(done)
                     
-                    timestep +=1
+                    timestep += 1
                     current_ep_reward += reward
                     
                     if timestep % action_std_decay_freq == 0:
-                        action_std_init =  agent.decay_action_std(action_std_decay_rate, min_action_std)
+                        action_std_init = agent.decay_action_std(action_std_decay_rate, min_action_std)
 
-                    if timestep == total_timesteps -1:
+                    if timestep == total_timesteps - 1:
                         agent.chkpt_save()
 
                     # break; if the episode is over
@@ -178,7 +170,7 @@ def runner():
                         episode += 1
 
                         t2 = datetime.now()
-                        t3 = t2-t1
+                        t3 = t2 - t1
                         
                         episodic_length.append(abs(t3.total_seconds()))
                         break
@@ -193,22 +185,19 @@ def runner():
                 else:
                     cumulative_score = np.mean(scores)
 
-
-                print('Episode: {}'.format(episode),', Timestep: {}'.format(timestep),', Reward:  {:.2f}'.format(current_ep_reward),', Average Reward:  {:.2f}'.format(cumulative_score))
+                print('Episode: {}'.format(episode), ', Timestep: {}'.format(timestep), ', Reward:  {:.2f}'.format(current_ep_reward), ', Average Reward:  {:.2f}'.format(cumulative_score))
                 if episode % 10 == 0:
                     agent.learn()
                     agent.chkpt_save()
                     chkt_file_nums = len(next(os.walk(f'checkpoints/PPO/{town}'))[2])
                     if chkt_file_nums != 0:
-                        chkt_file_nums -=1
+                        chkt_file_nums -= 1
                     chkpt_file = f'checkpoints/PPO/{town}/checkpoint_ppo_'+str(chkt_file_nums)+'.pickle'
                     data_obj = {'cumulative_score': cumulative_score, 'episode': episode, 'timestep': timestep, 'action_std_init': action_std_init}
                     with open(chkpt_file, 'wb') as handle:
                         pickle.dump(data_obj, handle)
-                    
                 
                 if episode % 5 == 0:
-
                     writer.add_scalar("Episodic Reward/episode", scores[-1], episode)
                     writer.add_scalar("Cumulative Reward/info", cumulative_score, episode)
                     writer.add_scalar("Cumulative Reward/(t)", cumulative_score, timestep)
@@ -226,7 +215,6 @@ def runner():
                     distance_covered = 0
 
                 if episode % 100 == 0:
-                    
                     agent.save()
                     chkt_file_nums = len(next(os.walk(f'checkpoints/PPO/{town}'))[2])
                     chkpt_file = f'checkpoints/PPO/{town}/checkpoint_ppo_'+str(chkt_file_nums)+'.pickle'
@@ -237,7 +225,7 @@ def runner():
             print("Terminating the run.")
             sys.exit()
         else:
-            #Testing
+            # Testing
             while timestep < TEST_TIMESTEPS:
                 observation = env.reset()
                 observation = encode.process(observation)
@@ -252,14 +240,14 @@ def runner():
                         break
                     observation = encode.process(observation)
                     
-                    timestep +=1
+                    timestep += 1
                     current_ep_reward += reward
                     # break; if the episode is over
                     if done:
                         episode += 1
 
                         t2 = datetime.now()
-                        t3 = t2-t1
+                        t3 = t2 - t1
                         
                         episodic_length.append(abs(t3.total_seconds()))
                         break
@@ -269,7 +257,7 @@ def runner():
                 scores.append(current_ep_reward)
                 cumulative_score = np.mean(scores)
 
-                print('Episode: {}'.format(episode),', Timestep: {}'.format(timestep),', Reward:  {:.2f}'.format(current_ep_reward),', Average Reward:  {:.2f}'.format(cumulative_score))
+                print('Episode: {}'.format(episode), ', Timestep: {}'.format(timestep), ', Reward:  {:.2f}'.format(current_ep_reward), ', Average Reward:  {:.2f}'.format(cumulative_score))
                 
                 writer.add_scalar("TEST: Episodic Reward/episode", scores[-1], episode)
                 writer.add_scalar("TEST: Cumulative Reward/info", cumulative_score, episode)
@@ -290,7 +278,6 @@ def runner():
 
     finally:
         sys.exit()
-
 
 if __name__ == "__main__":
     try:        
