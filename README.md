@@ -1,3 +1,6 @@
+# Introduction 
+This repository holds the full implementation, simulation environment, and pretrained models for our paper “Multi‑Objective Reinforcement Learning for Secure and Safe Autonomous Driving under Denial‑of‑Service Attacks.” It contains the CARLA‑based scenario generator that injects stochastic DoS events, the PPO training pipeline with our scalarized safety plus security reward, and scripts to reproduce every figure and table in the manuscript.
+
 # <p align="center"> Implementing a Deep Reinforcement Learning Model for Autonomous Driving </p>
 
 Artificial Intelligence (AI) is growing extraordinarily in almost every area of technology, and research into self-driving cars is one of them. In this work, we will take the liberty to utilize state-of-the-art methods to train our agent to drive autonomously using the Deep Reinforcement Learning (DRL) approach. We will use an open-source simulator, [CARLA](http://carla.org/), to conduct our experiment, providing a hyper-realistic urban simulation environment to train our models. We cannot use our raw algorithms in the real world because they come with many risks and moral questions, so we use these simulators to help us test them.
